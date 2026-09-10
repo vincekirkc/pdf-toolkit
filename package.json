@@ -1,0 +1,17 @@
+{
+  "name": "pdf-toolkit",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Privacy-first, speed-optimized PDF toolkit. Merge, split, compress, convert with sub-2s performance.",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0",
+    "typescript": "^5.3.0"
+  },
+  "packageManager": "pnpm@8.0.0"
+}
