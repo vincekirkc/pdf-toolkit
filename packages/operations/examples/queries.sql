@@ -1,5 +1,5 @@
-// Example: Weekly cost analysis query
-// Run this on your database to get cost breakdowns
+-- Example: Weekly cost analysis query
+-- Run this on your database to get cost breakdowns
 
 -- Weekly operation summary
 SELECT
