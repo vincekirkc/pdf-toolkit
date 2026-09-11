@@ -147,7 +147,6 @@ input[type='file'] {
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  disabled: opacity 0.6;
 }
 
 .merge-button:hover:not(:disabled) {
