@@ -1,6 +1,6 @@
 import Head from 'next/head'
-import { useState, useRef } from 'react'
-import { mergePdfs } from '@pdf-toolkit/pdf-core'
+import { useState, useRef, useEffect } from 'react'
+import { mergePdfsWithInstrumentation } from '@/lib/operations'
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -9,9 +9,11 @@ export default function Home() {
     pdfBytes: Uint8Array
     pageCount: number
     durationMs: number
+    costUsd: number
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showCostDetails, setShowCostDetails] = useState(false)
 
   const handleFileSelect = (files: FileList) => {
     const newFiles = Array.from(files).filter(file => file.type === 'application/pdf')
@@ -58,7 +60,7 @@ export default function Home() {
     setError(null)
 
     try {
-      const mergeResult = await mergePdfs(selectedFiles, { measure: true })
+      const mergeResult = await mergePdfsWithInstrumentation(selectedFiles)
       setResult(mergeResult)
       setSelectedFiles([])
     } catch (err) {
@@ -173,7 +175,24 @@ export default function Home() {
                 <span className="result-stat-label">Time</span>
                 <span className="result-stat-value">{result.durationMs.toFixed(2)}ms</span>
               </div>
+              <div className="result-stat">
+                <span className="result-stat-label">Cost (est.)</span>
+                <span className="result-stat-value" style={{ cursor: 'pointer' }} onClick={() => setShowCostDetails(!showCostDetails)}>
+                  ${result.costUsd.toFixed(6)}
+                </span>
+              </div>
             </div>
+            
+            {showCostDetails && (
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px', padding: '12px', backgroundColor: '#fafafa', borderRadius: '4px' }}>
+                <p style={{ marginBottom: '8px' }}>Cost breakdown (estimated):</p>
+                <p>• Base operation: $0.00001</p>
+                <p>• Compute time: ~${((result.durationMs / 1000) * 0.000001).toFixed(8)}</p>
+                <p>• File size: Included in total</p>
+                <p style={{ marginTop: '8px', fontWeight: 500 }}>This is tracked for analytics only and does not affect free usage.</p>
+              </div>
+            )}
+
             <button className="download-button" onClick={handleDownload}>
               Download Merged PDF
             </button>
