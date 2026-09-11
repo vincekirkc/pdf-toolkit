@@ -1,0 +1,25 @@
+{
+  "name": "@pdf-toolkit/operations",
+  "version": "0.0.1",
+  "description": "Orchestration layer for PDF operations. Wraps pdf-core with instrumentation, logging, and business logic.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@pdf-toolkit/pdf-core": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}
