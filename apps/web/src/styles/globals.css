@@ -41,6 +41,35 @@ h1 {
   margin-bottom: 32px;
 }
 
+.operation-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.op-button {
+  padding: 10px 16px;
+  border: 2px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.op-button:hover {
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.op-button.active {
+  background-color: #0066cc;
+  color: white;
+  border-color: #0066cc;
+}
+
 .upload-section {
   margin-bottom: 32px;
 }
@@ -90,6 +119,29 @@ input[type='file'] {
   background-color: #0052a3;
 }
 
+.operation-options {
+  margin: 16px 0;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.operation-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.operation-options select,
+.operation-options input {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
 .selected-files {
   margin-top: 16px;
 }
@@ -113,12 +165,16 @@ input[type='file'] {
   flex: 1;
   color: #1a1a1a;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-item-size {
   color: #999;
   font-size: 12px;
   margin-right: 12px;
+  flex-shrink: 0;
 }
 
 .file-item-remove {
@@ -130,6 +186,7 @@ input[type='file'] {
   font-weight: 500;
   padding: 4px 8px;
   transition: color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .file-item-remove:hover {
@@ -162,13 +219,13 @@ input[type='file'] {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #0066cc;
+  color: white;
 }
 
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #ffffff;
   border-top: 2px solid #0066cc;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -197,7 +254,7 @@ input[type='file'] {
 
 .result-info {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 16px;
   font-size: 14px;
@@ -227,6 +284,7 @@ input[type='file'] {
   padding: 8px 16px;
   background-color: #0066cc;
   color: white;
+  border: none;
   border-radius: 4px;
   text-decoration: none;
   cursor: pointer;
@@ -247,4 +305,18 @@ input[type='file'] {
   border-radius: 4px;
   color: #cc0000;
   font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .operation-selector {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .result-info {
+    grid-template-columns: 1fr;
+  }
+
+  .container {
+    padding: 20px;
+  }
 }

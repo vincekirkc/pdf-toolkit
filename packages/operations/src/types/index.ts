@@ -1,7 +1,3 @@
-/**
- * Core types for instrumentation and cost estimation
- */
-
 export type OperationType = 'merge' | 'split' | 'rotate' | 'compress' | 'convert' | 'ocr'
 
 export interface OperationRecord {

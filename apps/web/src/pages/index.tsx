@@ -1,19 +1,34 @@
 import Head from 'next/head'
-import { useState, useRef, useEffect } from 'react'
-import { mergePdfsWithInstrumentation } from '@/lib/operations'
+import { useState, useRef } from 'react'
+import {
+  mergePdfsWithInstrumentation,
+  splitPdfWithInstrumentation,
+  rotatePdfWithInstrumentation,
+  compressPdfWithInstrumentation,
+} from '@/lib/operations'
+
+type Operation = 'merge' | 'split' | 'rotate' | 'compress'
+
+interface OperationResult {
+  type: Operation
+  pdfBytes?: Uint8Array
+  results?: Array<{ pdfBytes: Uint8Array; pageCount: number }>
+  pageCount: number
+  durationMs: number
+  costUsd: number
+}
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [currentOperation, setCurrentOperation] = useState<Operation>('merge')
   const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<{
-    pdfBytes: Uint8Array
-    pageCount: number
-    durationMs: number
-    costUsd: number
-  } | null>(null)
+  const [result, setResult] = useState<OperationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showCostDetails, setShowCostDetails] = useState(false)
+  const [rotateDegrees, setRotateDegrees] = useState(90)
+  const [compressQuality, setCompressQuality] = useState<'low' | 'medium' | 'high'>('medium')
+  const [splitChunkSize, setSplitChunkSize] = useState(1)
 
   const handleFileSelect = (files: FileList) => {
     const newFiles = Array.from(files).filter(file => file.type === 'application/pdf')
@@ -50,9 +65,14 @@ export default function Home() {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleMerge = async () => {
-    if (selectedFiles.length < 2) {
-      setError('Please select at least 2 PDF files to merge')
+  const handleExecuteOperation = async () => {
+    if (selectedFiles.length === 0) {
+      setError('Please select at least one PDF file')
+      return
+    }
+
+    if (currentOperation === 'merge' && selectedFiles.length < 2) {
+      setError('Merge requires at least 2 PDF files')
       return
     }
 
@@ -60,26 +80,78 @@ export default function Home() {
     setError(null)
 
     try {
-      const mergeResult = await mergePdfsWithInstrumentation(selectedFiles)
-      setResult(mergeResult)
+      let operationResult
+
+      switch (currentOperation) {
+        case 'merge':
+          operationResult = await mergePdfsWithInstrumentation(selectedFiles)
+          setResult({
+            type: 'merge',
+            pdfBytes: operationResult.pdfBytes,
+            pageCount: operationResult.pageCount,
+            durationMs: operationResult.durationMs,
+            costUsd: operationResult.costUsd,
+          })
+          break
+
+        case 'split':
+          operationResult = await splitPdfWithInstrumentation(selectedFiles[0], splitChunkSize === 1 ? undefined : splitChunkSize)
+          setResult({
+            type: 'split',
+            results: operationResult.results,
+            pageCount: operationResult.results.length,
+            durationMs: operationResult.durationMs,
+            costUsd: operationResult.costUsd,
+          })
+          break
+
+        case 'rotate':
+          operationResult = await rotatePdfWithInstrumentation(selectedFiles[0], rotateDegrees)
+          setResult({
+            type: 'rotate',
+            pdfBytes: operationResult.pdfBytes,
+            pageCount: operationResult.pageCount,
+            durationMs: operationResult.durationMs,
+            costUsd: operationResult.costUsd,
+          })
+          break
+
+        case 'compress':
+          operationResult = await compressPdfWithInstrumentation(selectedFiles[0], compressQuality)
+          setResult({
+            type: 'compress',
+            pdfBytes: operationResult.pdfBytes,
+            pageCount: operationResult.pageCount,
+            durationMs: operationResult.durationMs,
+            costUsd: operationResult.costUsd,
+          })
+          break
+      }
+
       setSelectedFiles([])
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'An error occurred while merging PDFs'
+        err instanceof Error ? err.message : `An error occurred while executing ${currentOperation}`
       )
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleDownload = () => {
-    if (!result) return
+  const handleDownload = (pdfBytes?: Uint8Array, index?: number) => {
+    if (!pdfBytes) return
 
-    const blob = new Blob([result.pdfBytes], { type: 'application/pdf' })
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `merged-${Date.now()}.pdf`
+
+    if (result?.type === 'split' && index !== undefined) {
+      link.download = `page-${index + 1}-${Date.now()}.pdf`
+    } else {
+      link.download = `${result?.type}-${Date.now()}.pdf`
+    }
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -89,14 +161,31 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>PDF Toolkit - Merge PDFs</title>
-        <meta name="description" content="Merge PDFs in under 2 seconds. No signup required." />
+        <title>PDF Toolkit</title>
+        <meta name="description" content="Merge, split, rotate, and compress PDFs. All operations under 2 seconds." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       <div className="container">
-        <h1>Merge PDFs</h1>
-        <p className="subtitle">Combine multiple PDF files into one. No signup required.</p>
+        <h1>PDF Toolkit</h1>
+        <p className="subtitle">Merge, split, rotate, and compress PDFs. No signup required.</p>
+
+        {/* Operation Selector */}
+        <div className="operation-selector">
+          {(['merge', 'split', 'rotate', 'compress'] as Operation[]).map(op => (
+            <button
+              key={op}
+              className={`op-button ${currentOperation === op ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentOperation(op)
+                setResult(null)
+                setError(null)
+              }}
+            >
+              {op.charAt(0).toUpperCase() + op.slice(1)}
+            </button>
+          ))}
+        </div>
 
         <div className="upload-section">
           <div
@@ -115,7 +204,7 @@ export default function Home() {
               id="file-input"
               ref={fileInputRef}
               type="file"
-              multiple
+              multiple={currentOperation === 'merge'}
               accept=".pdf"
               onChange={handleFileInputChange}
             />
@@ -145,18 +234,59 @@ export default function Home() {
             </div>
           )}
 
+          {/* Operation-specific options */}
+          {currentOperation === 'rotate' && selectedFiles.length > 0 && (
+            <div className="operation-options">
+              <label>
+                Rotation: 
+                <select value={rotateDegrees} onChange={(e) => setRotateDegrees(Number(e.target.value))}>
+                  <option value={90}>90°</option>
+                  <option value={180}>180°</option>
+                  <option value={270}>270°</option>
+                </select>
+              </label>
+            </div>
+          )}
+
+          {currentOperation === 'compress' && selectedFiles.length > 0 && (
+            <div className="operation-options">
+              <label>
+                Quality:
+                <select value={compressQuality} onChange={(e) => setCompressQuality(e.target.value as 'low' | 'medium' | 'high')}>
+                  <option value="high">High (minimal compression)</option>
+                  <option value="medium">Medium (balanced)</option>
+                  <option value="low">Low (maximum compression)</option>
+                </select>
+              </label>
+            </div>
+          )}
+
+          {currentOperation === 'split' && selectedFiles.length > 0 && (
+            <div className="operation-options">
+              <label>
+                Pages per chunk:
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={splitChunkSize} 
+                  onChange={(e) => setSplitChunkSize(Number(e.target.value))}
+                />
+              </label>
+            </div>
+          )}
+
           <button
             className="merge-button"
-            onClick={handleMerge}
-            disabled={selectedFiles.length < 2 || isLoading}
+            onClick={handleExecuteOperation}
+            disabled={selectedFiles.length === 0 || isLoading}
           >
             {isLoading ? (
               <span className="loading">
                 <span className="spinner" />
-                Merging...
+                Processing...
               </span>
             ) : (
-              `Merge ${selectedFiles.length > 0 ? `(${selectedFiles.length} files)` : ''}`
+              `${currentOperation.charAt(0).toUpperCase() + currentOperation.slice(1)} ${selectedFiles.length > 0 ? `(${selectedFiles.length} ${currentOperation === 'split' ? 'file' : 'files'})` : ''}`
             )}
           </button>
         </div>
@@ -165,10 +295,10 @@ export default function Home() {
 
         {result && (
           <div className="result">
-            <div className="result-title">✓ PDFs merged successfully!</div>
+            <div className="result-title">✓ {result.type.charAt(0).toUpperCase() + result.type.slice(1)} completed successfully!</div>
             <div className="result-info">
               <div className="result-stat">
-                <span className="result-stat-label">Pages</span>
+                <span className="result-stat-label">{result.type === 'split' ? 'Chunks' : 'Pages'}</span>
                 <span className="result-stat-value">{result.pageCount}</span>
               </div>
               <div className="result-stat">
@@ -185,17 +315,35 @@ export default function Home() {
             
             {showCostDetails && (
               <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px', padding: '12px', backgroundColor: '#fafafa', borderRadius: '4px' }}>
-                <p style={{ marginBottom: '8px' }}>Cost breakdown (estimated):</p>
-                <p>• Base operation: $0.00001</p>
-                <p>• Compute time: ~${((result.durationMs / 1000) * 0.000001).toFixed(8)}</p>
-                <p>• File size: Included in total</p>
+                <p>Cost breakdown (estimated)</p>
                 <p style={{ marginTop: '8px', fontWeight: 500 }}>This is tracked for analytics only and does not affect free usage.</p>
               </div>
             )}
 
-            <button className="download-button" onClick={handleDownload}>
-              Download Merged PDF
-            </button>
+            {/* Download buttons */}
+            {result.type === 'split' && result.results ? (
+              <div>
+                <p style={{ fontSize: '12px', marginBottom: '8px', color: '#666' }}>
+                  {result.results.length} page(s) to download
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '8px' }}>
+                  {result.results.map((r, idx) => (
+                    <button
+                      key={idx}
+                      className="download-button"
+                      onClick={() => handleDownload(r.pdfBytes, idx)}
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      Page {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button className="download-button" onClick={() => handleDownload(result.pdfBytes)}>
+                Download {result.type.charAt(0).toUpperCase() + result.type.slice(1)} PDF
+              </button>
+            )}
           </div>
         )}
       </div>
